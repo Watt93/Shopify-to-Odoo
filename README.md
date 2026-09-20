@@ -1,3 +1,3 @@
-# Shopify-Odoo-Import-Files-Converter
-# Shopify-Odoo-Export-Files-Converter
-# Shopify-Odoo-Export-Files-Converter
+Browser-based converter that turns Shopify CSV exports into Odoo-ready .xlsx import files — products, inventory, customers, orders and URL redirects.
+
+
