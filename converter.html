@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shopify to Odoo - Export Files Converter</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<main>
+
+  <header>
+    <h1>Shopify to Odoo - Files Converter</h1>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="What to import">
+    <button class="tab" type="button" role="tab" id="tab-products"  aria-controls="panel-products"  aria-selected="true">Products</button>
+    <button class="tab" type="button" role="tab" id="tab-inventory" aria-controls="panel-inventory" aria-selected="false" tabindex="-1">Inventory</button>
+    <button class="tab" type="button" role="tab" id="tab-customers" aria-controls="panel-customers" aria-selected="false" tabindex="-1">Customers</button>
+    <button class="tab" type="button" role="tab" id="tab-orders"    aria-controls="panel-orders"    aria-selected="false" tabindex="-1">Orders</button>
+    <button class="tab" type="button" role="tab" id="tab-redirections" aria-controls="panel-redirections" aria-selected="false" tabindex="-1">Redirections</button>
+  </nav>
+
+  <section class="panel" id="panel-products" role="tabpanel" aria-labelledby="tab-products" data-convert="products">
+
+    <div class="howBox">
+      <button class="info" type="button" aria-describedby="how-products">
+        <span class="i" aria-hidden="true">i</span>What this script does
+      </button>
+<ol class="how" id="how-products" role="tooltip">
+  <li>Group rows by <b>Handle</b>: one product per handle, and every row carrying variant data becomes a variant.</li>
+  <li>Normalize option names and propagate them consistently across all rows.</li>
+  <li>Map <b>Option 1&ndash;3</b> to Odoo attributes and values, excluding Shopify&rsquo;s <i>Default Title</i>.</li>
+  <li>Fold capitalization, so <i>color / navy</i> and <i>Color / Navy</i> are one attribute and one value; attribute names also ignore spacing and punctuation.</li>
+  <li>Do not allow commas inside option values: Odoo uses commas as separators between attribute/value pairs.</li>
+  <li>Build eCommerce categories from <b>Product Category</b>, <b>Type</b>, or <b>Product Type</b>, splitting category paths at <code>&gt;</code>.</li>
+  <li>Sort attribute values logically and assign swatches to recognized colours.</li>
+  <li>Strip HTML tags from product descriptions.</li>
+  <li>Give each product a fixed id from its Shopify <b>Handle</b>, so a second import updates instead of duplicating.</li>
+  <li>Write the <b>categories</b> file first, with parent categories created before their children &mdash; only when a category source column is populated.</li>
+  <li>Then the <b>attributes</b> file: attributes, attribute values, and colour swatches &mdash; only when the export carries options.</li>
+  <li>Then the <b>products</b> file: products and variants, including shop category, pricing, costs, references, barcodes, stock, descriptions, and optionally images. Place the cheapest variant last so the product displays its lowest entry price.</li>
+  <li>Warn when the products file runs past the 2000 rows Odoo imports in one batch: a product whose variants straddle the cut is created twice unless the batch size is raised first.</li>
+  <li>Collect every photo &mdash; main, gallery, and variant images &mdash; for browser download as a <code>.zip</code>. Odoo fetches the <b>Image</b> column itself, but that only fills the main and variant photos; the gallery can only come from the zip.</li>
+</ol>
+    </div>
+
+    <div class="msg"></div>
+
+    <div class="drop" tabindex="0" role="button" aria-label="Choose a Shopify product export">
+      <strong>Drop your Shopify product export here</strong>
+      <span>or click to choose a file</span>
+    </div>
+    <input type="file" class="file" accept=".csv,text/csv">
+
+    <section class="read" hidden>
+      <h2 class="label">What was read</h2>
+      <div class="tags"></div>
+    </section>
+
+    <div class="opt" hidden>
+      <span class="optMain">
+        <label class="optRow">
+          <input type="checkbox" id="optImages">
+          <b class="optTitle">Include product images in the import file (not recommended)</b>
+        </label>
+        <span class="howBox optHow">
+          <button class="info" type="button" aria-label="What this option does"
+                  aria-describedby="how-images">
+            <span class="i" aria-hidden="true">i</span>
+          </button>
+          <p class="how" id="how-images" role="tooltip">
+            Odoo downloads every photo from Shopify while the file is being imported: one request
+            per row, made by the server, before the record is written. It is by far the heaviest part
+            of the import: on a large catalogue it turns a few seconds into several minutes, and it is
+            the first thing to time out. Untick the box and the <b>Image</b> column is left out of the
+            products file; the import then runs on text alone, and the photos can still be fetched
+            here and added to Odoo afterwards.
+          </p>
+        </span>
+      </span>
+      <span class="actions optActions" id="imgActions" hidden>
+        <button class="btn" id="fetchImgs">Fetch images</button>
+        <button class="btn" id="dlImgs" hidden>Download .zip</button>
+      </span>
+      <p id="imgHint" class="prose"></p>
+    </div>
+
+    <div class="result" hidden>
+
+      <section>
+        <h2 class="label">Files to import in Odoo, in this order</h2>
+        <div class="files"></div>
+        <div class="actions">
+          <button class="btn big all">Download all (.zip)</button>
+        </div>
+      </section>
+
+    </div>
+
+  </section>
+
+  <section class="panel" id="panel-inventory" role="tabpanel" aria-labelledby="tab-inventory" data-convert="inventory" hidden>
+
+    <p class="prose">Use this tab only if your Shopify store holds stock in several locations.</p>
+
+    <div class="howBox">
+      <button class="info" type="button" aria-describedby="how-inventory">
+        <span class="i" aria-hidden="true">i</span>What this script does
+      </button>
+      <ol class="how" id="how-inventory" role="tooltip">
+        <li>Find the columns holding quantities, Shopify having three export shapes.</li>
+        <li>Prefer <b>On hand</b>; fall back to <b>Available</b> only if it is missing.</li>
+        <li>Skip blank cells and <i>Not stocked</i>: neither of them means zero.</li>
+        <li>Leave <b>Incoming</b> out: in Odoo that is a receipt to validate, not a count.</li>
+        <li>Create a warehouse of its own for each place the file names, beside the one already there.</li>
+        <li>Match every quantity to its variant on the <b>SKU</b>.</li>
+        <li>Write <b>file 1</b>: the warehouses, when the file names more than one place.</li>
+        <li>Write <b>file 2</b>: one counted quantity per variant and location.</li>
+      </ol>
+    </div>
+
+    <div class="msg"></div>
+
+    <div class="drop" tabindex="0" role="button" aria-label="Choose a Shopify inventory export">
+      <strong>Drop your Shopify inventory export here</strong>
+      <span>or click to choose a file</span>
+    </div>
+    <input type="file" class="file" accept=".csv,text/csv">
+
+    <section class="read" hidden>
+      <h2 class="label">What was read</h2>
+      <div class="tags"></div>
+    </section>
+
+    <div class="result" hidden>
+
+      <section>
+        <h2 class="label">Files to import, in this order</h2>
+        <div class="files"></div>
+        <div class="actions">
+          <button class="btn big all">Download all (.zip)</button>
+        </div>
+      </section>
+
+    </div>
+
+  </section>
+
+  <section class="panel" id="panel-customers" role="tabpanel" aria-labelledby="tab-customers" data-convert="customers" hidden>
+
+    <div class="howBox">
+      <button class="info" type="button" aria-describedby="how-customers">
+        <span class="i" aria-hidden="true">i</span>What this script does
+      </button>
+      <ol class="how" id="how-customers" role="tooltip">
+        <li>Find the columns by name, whatever wording the export uses.</li>
+        <li>Build each name from first + last, else the company, else the email.</li>
+        <li>Check every email and drop the malformed ones.</li>
+        <li>Turn the country code into an Odoo country; write the province by its full name.</li>
+        <li>Split Shopify's two numbers into <b>Phone</b> and <b>Mobile</b>.</li>
+        <li>Give each contact a fixed id from its Shopify Customer ID, so a second import updates instead of duplicating.</li>
+        <li>Write <b>file 1</b>: the contacts with their address and country.</li>
+        <li>Write <b>file 2</b>: everyone who refused email marketing.</li>
+      </ol>
+    </div>
+
+    <div class="msg"></div>
+
+    <div class="drop" tabindex="0" role="button" aria-label="Choose a Shopify customer export">
+      <strong>Drop your Shopify customer export here</strong>
+      <span>or click to choose a file</span>
+    </div>
+    <input type="file" class="file" accept=".csv,text/csv">
+
+    <section class="read" hidden>
+      <h2 class="label">What was read</h2>
+      <div class="tags"></div>
+    </section>
+
+    <div class="result" hidden>
+
+      <section>
+        <h2 class="label">Files to import, in this order</h2>
+        <div class="files"></div>
+        <div class="actions">
+          <button class="btn big all">Download all (.zip)</button>
+        </div>
+        <ol class="steps">
+          <li>In Odoo: <b>Contacts → ⚙ → Import records</b>.</li>
+          <li>Click <b>Test</b> before importing, and check that <b>Country</b> and <b>State</b> are recognised.</li>
+          <li>Every contact carries an external <b>id</b> built from its Shopify Customer ID, so re-importing the same file updates those contacts instead of duplicating them.</li>
+          <li>The files are <b>.xlsx</b>, like Odoo's official import template.</li>
+        </ol>
+      </section>
+
+    </div>
+
+  </section>
+
+  <section class="panel" id="panel-orders" role="tabpanel" aria-labelledby="tab-orders" data-convert="orders" hidden>
+
+    <div class="howBox">
+      <button class="info" type="button" aria-describedby="how-orders">
+        <span class="i" aria-hidden="true">i</span>What this script does
+      </button>
+      <ol class="how" id="how-orders" role="tooltip">
+        <li>Group the rows back into orders by <b>Name</b> (<code>#1001</code>).</li>
+        <li>Match every line to its variant on the <b>SKU</b>.</li>
+        <li>Match every order to its customer on the <b>email</b>, else the billing name.</li>
+        <li>Turn shipping and any order-wide discount into extra lines, as Odoo has no field for either.</li>
+        <li>Turn a line discount from an amount into a percentage.</li>
+        <li>Keep the store's local time and drop the UTC offset.</li>
+        <li>Write <b>file 1</b>: the two service products those extra lines need.</li>
+        <li>Write <b>file 2</b>: the orders, one row per line item, <b>confirmed</b>: no delivery, no invoice, stock untouched.</li>
+      </ol>
+    </div>
+
+    <div class="msg"></div>
+
+    <div class="drop" tabindex="0" role="button" aria-label="Choose a Shopify order export">
+      <strong>Drop your Shopify order export here</strong>
+      <span>or click to choose a file</span>
+    </div>
+    <input type="file" class="file" accept=".csv,text/csv">
+
+    <section class="read" hidden>
+      <h2 class="label">What was read</h2>
+      <div class="tags"></div>
+    </section>
+
+    <div class="result" hidden>
+
+      <section>
+        <h2 class="label">Files to import, in this order</h2>
+        <div class="files"></div>
+        <div class="actions">
+          <button class="btn big all">Download all (.zip)</button>
+        </div>
+        <ol class="steps">
+          <li>Import the <b>Products</b> tab's files and then the <b>Customers</b> tab's first. Every line finds its variant on the <b>Internal Reference</b> and every order finds its contact on the <b>email address</b>, and nothing here creates either.</li>
+          <li>In Odoo: <b>Sales → Orders → ⚙ → Import records</b>.</li>
+          <li>Click <b>Test</b> first. It is the one place that names the SKU or the contact Odoo cannot find, before a single order is written.</li>
+          <li>One row per line item, as Shopify exported it: Odoo folds every row that fills only the <b>order_line</b> columns into the order above it. Leave the rows in their order.</li>
+          <li>The orders arrive <b>confirmed but undelivered and uninvoiced</b>, so the stock loaded by the Inventory tab is not deducted a second time.</li>
+          <li>Never tick <b>I want to update data</b>: the <b>id</b> column already makes a second import update the same orders instead of duplicating them.</li>
+        </ol>
+      </section>
+
+    </div>
+
+  </section>
+
+  <section class="panel" id="panel-redirections" role="tabpanel" aria-labelledby="tab-redirections" data-convert="redirections" hidden>
+
+    <p class="prose">Use this tab if the shop keeps its domain: every old Shopify address has to be sent to the page that replaces it in Odoo. You can use <a href="https://www.seowl.co/sitemap-extractor/">SEOWL</a> to extract the Shopify store sitemap. </p>
+
+    <div class="howBox">
+      <button class="info" type="button" aria-describedby="how-redirections">
+        <span class="i" aria-hidden="true">i</span>What this script does
+      </button>
+      <ol class="how" id="how-redirections" role="tooltip">
+        <li>Read the addresses from a sitemap &mdash; the XML of <code>sitemap.xml</code>, or a plain list with one address per line.</li>
+        <li>Keep the path only: the domain, the query string and the anchor are dropped, because Odoo matches a redirect on the path.</li>
+        <li>Leave out what has no counterpart in Odoo: the home page, the cart, the customer account, the checkout, and files such as <code>sitemap.xml</code> or <code>agents.md</code>.</li>
+        <li>Drop the addresses listed twice &mdash; two rules on the same address would fight over the same request.</li>
+        <li>Sort by kind, then by address: products together, then collections, pages and the blog.</li>
+        <li>Write each rule as a <b>301</b>, the permanent redirect, which also hands the old page&rsquo;s search ranking to the new one.</li>
+        <li>Give each rule a fixed id from its Shopify path, so a second import updates instead of duplicating.</li>
+        <li>Leave <b>url_to</b> empty: an Odoo address ends with the record&rsquo;s own id, so it can only be copied from the shop once the import is done. That column is yours to fill.</li>
+      </ol>
+    </div>
+
+    <div class="msg"></div>
+
+    <div class="drop" tabindex="0" role="button" aria-label="Choose a sitemap">
+      <strong>Drop your Shopify sitemap here</strong>
+      <span>or click to choose a file</span>
+    </div>
+    <input type="file" class="file" accept=".xml,.csv,.txt,text/xml,text/csv,text/plain">
+
+    <section class="read" hidden>
+      <h2 class="label">What was read</h2>
+      <div class="tags"></div>
+    </section>
+
+    <div class="result" hidden>
+
+      <section>
+        <h2 class="label">File to import in Odoo</h2>
+        <div class="files"></div>
+        <div class="actions">
+          <button class="btn big all">Download all (.zip)</button>
+        </div>
+        <ol class="steps">
+          <li>Import the other tabs&rsquo; files first, and build the pages of the site. A redirect is written by hand towards a page that exists &mdash; there is nothing to point at before that.</li>
+          <li>Fill the <b>url_to</b> column, one row per line. In Odoo: a product is <code>/shop/&lt;product&gt;-&lt;id&gt;</code>, a category <code>/shop/category/&lt;category&gt;-&lt;id&gt;</code>, a blog post <code>/blog/&lt;blog&gt;-&lt;id&gt;/&lt;post&gt;-&lt;id&gt;</code>, and a page simply <code>/&lt;page&gt;</code>. Open the page in Odoo and copy the address from the browser rather than guessing the number.</li>
+          <li>A row whose <b>url_to</b> is still empty is refused by Odoo: delete it, or set its <b>redirect_type</b> to <code>404</code> to retire that address for good.</li>
+          <li>Turn on the developer mode, then import from <b>Website &rarr; Configuration &rarr; Redirects &rarr; &#9881; &rarr; Import records</b>.</li>
+          <li>Click <b>Test</b> first, then import. Never tick <b>I want to update data</b> &mdash; the <b>id</b> column already makes a second import update the same rules.</li>
+          <li>The rules only answer once the domain points at Odoo: while the shop is still served by Shopify, the old addresses never reach Odoo at all.</li>
+        </ol>
+      </section>
+
+    </div>
+
+  </section>
+
+</main>
+
+<script src="zip-xlsx.js"></script>
+<script src="common.js"></script>
+<script src="products.js"></script>
+<script src="inventory.js"></script>
+<script src="customers.js"></script>
+<script src="orders.js"></script>
+<script src="redirections.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>

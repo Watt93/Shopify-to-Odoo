@@ -1,0 +1,273 @@
+:root{
+  --ink:#18181b;      /* primary text      */
+  --ink-2:#3f3f46;    /* secondary text    */
+  --mute:#71717a;     /* paragraphs        */
+  --faint:#a1a1aa;    /* meta, labels      */
+  --ghost:#d4d4d8;    /* row numbers       */
+  --rule:#e4e4e7;     /* section rules     */
+  --hair:#f4f4f5;     /* list rules        */
+  --wash:#fafafa;     /* hover             */
+  --err-bg:#fef2f2; --err:#991b1b; --err-strong:#7f1d1d;
+  --warn-bg:#fffbeb; --warn:#92400e; --warn-strong:#78350f;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+
+/* ---------- foundation ---------- */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:#fff;color:var(--ink);
+  font:400 16px/1.5 var(--sans);
+  -webkit-font-smoothing:antialiased;
+}
+[hidden]{display:none !important}
+code{font-family:var(--mono);color:var(--faint)}
+
+main{max-width:42rem;margin:0 auto;padding:4rem 1.5rem}
+@media (min-width:640px){main{padding-top:6rem;padding-bottom:6rem}}
+
+/* ---------- header ---------- */
+header{margin-bottom:2rem}
+h1{font-size:1.875rem;line-height:1.15;letter-spacing:-.025em;font-weight:600;margin:0}
+@media (min-width:640px){h1{font-size:2.25rem}}
+
+/* ---------- tabs ---------- */
+.tabs{display:flex;gap:1.5rem;margin-bottom:2rem}
+.tab{
+  font:500 13px/1.4 var(--sans);color:var(--ink);cursor:pointer;
+  background:none;border:0;padding:0 0 .75rem;margin-bottom:-1px;
+  border-bottom:2px solid var(--ink);
+}
+.tab[aria-selected="false"]{color:var(--faint);border-bottom-color:transparent}
+.tab[aria-selected="false"]:hover{color:var(--ink-2)}
+.tab:focus-visible{outline:2px solid rgb(24 24 27 / .2);outline-offset:2px;border-radius:.125rem}
+
+/* ---------- "what this script does"  ---------- */
+.howBox{position:relative;display:inline-block;margin-bottom:2rem}
+.info{
+  display:inline-flex;align-items:center;gap:.5rem;cursor:default;
+  font:500 12px/1.4 var(--sans);color:var(--mute);
+  background:none;border:0;padding:.25rem 0;
+}
+.info:has(.i:hover){color:var(--ink)}
+.info:focus-visible{outline:2px solid rgb(24 24 27 / .2);outline-offset:2px;border-radius:.125rem}
+/* a drawn glyph rather than an icon font: the page loads nothing */
+.info .i{
+  flex:none;display:grid;place-items:center;width:15px;height:15px;
+  border:1px solid currentColor;border-radius:50%;
+  font:600 10px/1 Georgia,serif;font-style:italic;cursor:help;
+}
+
+/* the steps sit over the page, not in it: pointing at the i is the whole gesture */
+.how{
+  position:absolute;z-index:30;top:calc(100% + .5rem);left:0;
+  width:max-content;max-width:min(100ch,calc(100vw - 3rem));
+  margin:0;padding:.875rem 1rem .875rem 2.125rem;
+  background:#fff;border:1px solid var(--rule);border-radius:.5rem;
+  box-shadow:0 1px 2px rgb(24 24 27 / .04),0 8px 24px rgb(24 24 27 / .08);
+  font-size:12px;line-height:1.55;color:var(--mute);
+  opacity:0;visibility:hidden;transform:translateY(-2px);
+  transition:opacity .15s,transform .15s,visibility .15s;
+}
+/* only the i opens it: the label beside it is read, not pointed at. The note
+   stays open while the pointer is on it, and a transparent strip spans the gap
+   under the glyph so crossing into it never closes the note. */
+.how::before{content:"";position:absolute;left:0;right:0;top:-.625rem;height:.625rem}
+.howBox:has(.i:hover) .how,.howBox:has(.how:hover) .how,.howBox:focus-within .how{
+  opacity:1;visibility:visible;transform:none;
+}
+@media (hover:none){.how{max-width:calc(100vw - 3rem)}}
+.how li+li{margin-top:.375rem}
+.how li::marker{font:400 11px/1 var(--mono);color:var(--ghost)}
+.how b{font-weight:500;color:var(--ink)}
+.how code{color:var(--ink-2)}
+
+/* section label: the one repeated typographic motif */
+.label{
+  margin:0 0 1.25rem;font:700 13px/1.3 system-ui,var(--sans);
+  letter-spacing:.01em;color:var(--ink);
+}
+
+/* ---------- drop zone ---------- */
+.drop{
+  display:flex;flex-direction:column;align-items:center;gap:.25rem;
+  padding:4rem 1.5rem;text-align:center;cursor:pointer;
+  background:var(--wash);
+  border:1px dashed var(--ghost);border-radius:.5rem;
+  transition:border-color .15s,background-color .15s;
+}
+.drop:hover,.drop:focus-visible,.drop.over{border-color:var(--ink);background:var(--hair)}
+.drop:focus-visible{outline:2px solid rgb(24 24 27 / .2);outline-offset:2px}
+.drop strong{font-size:15px;font-weight:500}
+.drop span{font-size:13px;color:var(--faint)}
+/* once a file is chosen the zone collapses to a compact field */
+.drop.loaded{
+  flex-direction:row;align-items:center;justify-content:space-between;
+  gap:1rem;padding:.75rem 1rem;text-align:left;
+  border-style:solid;border-color:var(--rule);
+}
+.drop.loaded strong{font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drop.loaded span{flex:none;font-size:12px;color:var(--ink)}
+.file{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip-path:inset(50%);white-space:nowrap;border:0}
+
+/* ---------- options that change what goes into the file ---------- */
+.opt{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:.75rem .5rem;margin-top:1.5rem;max-width:65ch}
+.optSlot .opt{margin-top:.625rem;max-width:none}
+.opt #imgHint{flex-basis:100%;margin:0}
+.optRow{display:flex;align-items:center;gap:.625rem;cursor:pointer}
+.opt input{flex:none;width:15px;height:15px;margin:0;accent-color:var(--ink);cursor:pointer}
+.opt input:focus-visible{outline:2px solid rgb(24 24 27 / .25);outline-offset:2px}
+.optTitle{font-size:11px;line-height:1.625;font-weight:500;color:var(--ink)}
+
+/* the same hover note as above, cut back to its i and hung under the whole row
+   rather than under the glyph, so it cannot run off the page */
+.optHow{position:static;display:inline-flex;margin:0}
+.optHow .info{padding:0}
+.optHow .how{left:0;right:0;width:auto;max-width:none;padding:1rem 1.25rem}
+/* the fetch buttons ride on the same line, against the right edge of the row;
+   they answer the option rather than the file, so they sit a size down */
+.opt .optActions{margin:0 0 0 auto}
+.optActions .btn{font-size:10px;padding:.375rem .75rem;border-radius:.3125rem}
+.optMain{display:flex;align-items:center;gap:.5rem;min-width:0}
+/* inside a file row the option borrows that row's columns, so its button starts
+   where Download starts instead of floating in from the right */
+@supports (grid-template-columns:subgrid){
+  .fileRow .optSlot{display:grid;grid-template-columns:subgrid}
+  .optSlot .opt{display:grid;grid-template-columns:subgrid;grid-column:1/-1;
+    align-items:center;gap:0 1rem}
+  .optSlot .optActions{margin:0;justify-content:flex-start}
+  .optSlot #imgHint{grid-column:1/-1;margin-top:.375rem}
+}
+
+/* ---------- result sections ---------- */
+.result{margin-top:3.5rem}
+.msg:not(:empty){margin-bottom:1.5rem}
+.prose{max-width:65ch;margin:0 0 1.5rem;font-size:13px;line-height:1.625;color:var(--mute)}
+#imgHint{margin:0}
+
+/* ---------- buttons ---------- */
+.btn{
+  font:500 13px/1.4 var(--sans);cursor:pointer;
+  color:#fff;background:var(--ink);border:0;border-radius:.375rem;
+  padding:.5rem 1rem;transition:background-color .15s;
+}
+.btn:hover{background:var(--ink-2)}
+.btn:focus-visible{outline:2px solid rgb(24 24 27 / .25);outline-offset:2px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{color:var(--ink-2);background:transparent;box-shadow:inset 0 0 0 1px var(--rule)}
+.btn.ghost:hover{color:var(--ink);background:var(--wash)}
+/* a download that already happened: white, outlined, with a check */
+.btn.done,.btn.done:hover{
+  color:var(--ink);background:#fff;box-shadow:inset 0 0 0 1px var(--rule);cursor:default;
+}
+/* the check rides inside the label rather than beside it, so the swap below can
+   measure both wordings against each other */
+.btn .swap>span.mark{display:inline-flex;align-items:center;gap:.375rem}
+.btn.done svg{width:.875em;height:.875em;flex:none}
+/* a button whose wording changes keeps all of its labels in the same grid cell,
+   so it stays as wide as its longest one and the row does not move when a file
+   is saved */
+.btn .swap{display:grid;place-items:center}
+.btn .swap>span{grid-area:1/1}
+.btn .swap>span.off{visibility:hidden}
+.btn.big{font-size:14px;padding:.625rem 1.25rem}
+.actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.5rem}
+/* the whole-export button closes the list rather than opening it, so it sits
+   at the end of the line, under the per-file buttons it stands for */
+.result>section>.actions{justify-content:flex-end}
+
+/* ---------- what was read: a strip of tabs, straight under the file ---------- */
+.read{margin-top:2rem}
+.read .label{margin-bottom:.75rem}
+/* the counts read across rather than down; the rule under them is the one the
+   selected tab sits on, hence the -1px pull on the tabs themselves */
+.readTabs{display:flex;flex-wrap:wrap;gap:0 1.75rem;}
+.readTab{
+  display:inline-flex;align-items:baseline;gap:.4375rem;
+  padding:0 0 .625rem;margin-bottom:-1px;
+  background:none;border:0;border-bottom:2px solid transparent;
+  font:400 12px/1.6 var(--mono);color:var(--mute);text-align:left;
+}
+.readTab .n{font-variant-numeric:tabular-nums;color:var(--ink)}
+
+/* ---------- file lists: import order matters, hence the numbering ---------- */
+.fileRow{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;
+  gap:0 1rem;align-items:start;padding:1rem 0;border-top:1px solid var(--hair)}
+/* the option sits on its own line, from the name column to the buttons' edge */
+.fileRow .optSlot{grid-column:2/-1}
+/* two actions per row: they wrap under each other rather than squeezing the name */
+.rowActions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:.5rem}
+.fileRow:first-of-type{border-top:0;padding-top:0}
+.num{flex:none;margin-top:.125rem;font:400 12px/1.4 var(--mono);
+  font-variant-numeric:tabular-nums;color:var(--ghost)}
+.fileMeta{min-width:0}
+/* the name and its i share one line box, so the glyph is centred on the text
+   rather than hung off an inline-flex baseline */
+.fileMeta b{display:flex;align-items:center;gap:.5rem;
+  font-size:14px;font-weight:500;word-break:break-all}
+/* the editable name: the input carries no chrome until it is pointed at, so the
+   list still reads as a list of names rather than a form */
+.fileName{display:flex;align-items:center;min-width:0;max-width:100%}
+.nameField{display:inline-grid;min-width:3ch;max-width:100%}
+.nameField::after,.nameField input{
+  grid-area:1/1;font:inherit;padding:.125rem .25rem;margin:-.125rem 0;
+  border:1px solid transparent;border-radius:.25rem;
+}
+/* an invisible copy of what is typed, sizing the column the input shares */
+.nameField::after{content:attr(data-value);white-space:pre;visibility:hidden}
+.nameField input{width:100%;min-width:0;background:none;color:inherit}
+.nameField input:hover{border-color:var(--rule);background:var(--wash)}
+.nameField input:focus{outline:none;border-color:var(--ink);background:#fff}
+.ext{flex:none;color:var(--faint)}
+.model{margin-top:.125rem;font:400 11.5px/1.4 var(--mono);color:var(--faint)}
+/* the file's note, folded behind an i, so the list stays a list of names. It
+   hangs off the whole row, so a long note has the column's full width */
+.noteBox{position:static;display:flex;flex:none;margin:0}
+.noteBox .info{padding:0;color:var(--ink)}
+.noteBox .i{width:14px;height:14px;font-size:9px}
+.noteBox .how{left:0;right:0;top:calc(100% - .5rem);width:auto;max-width:none;padding:.875rem 1rem}
+/* it already overlaps its row, so it needs no strip to bridge a gap */
+.noteBox .how::before{display:none}
+
+/* ---------- messages ---------- */
+.alert{padding:.875rem 1rem;border-radius:.375rem;background:var(--err-bg)}
+.alert h3{margin:0;font-size:13px;font-weight:600;color:var(--err-strong)}
+.alert p{margin:.25rem 0 0;font-size:13px;line-height:1.625;color:var(--err)}
+.alert ul{margin:.5rem 0 0;padding-left:1.25rem;font:400 12px/1.6 var(--mono);color:var(--err)}
+.warn{background:var(--warn-bg)}
+.warn h3{color:var(--warn-strong)}
+.warn p,.warn ul{color:var(--warn)}
+.tags .alert{margin-top:1.5rem}
+
+/* ---------- summary counts: each one opens the list it counts ---------- */
+/* a tab with a breakdown behind it is a button; a bare count is not */
+button.readTab{cursor:pointer}
+button.readTab:hover{color:var(--ink);border-bottom-color:var(--rule)}
+button.readTab[aria-expanded="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+button.readTab:focus-visible{outline:2px solid rgb(24 24 27 / .2);outline-offset:2px;border-radius:.125rem}
+.items{
+  margin:.875rem 0 0;padding:.5rem .875rem;list-style:none;
+  max-height:16rem;overflow-y:auto;overscroll-behavior:contain;
+  background:var(--wash);border:1px solid var(--hair);border-radius:.375rem;
+  font:400 12px/1.7 var(--mono);color:var(--mute);
+  scrollbar-width:thin;scrollbar-color:var(--ghost) transparent;
+}
+/* macOS hides overlay scrollbars until they move, so a capped list reads as cut
+   off; a thin permanent thumb says the rest is one scroll away */
+.items::-webkit-scrollbar{width:11px}
+.items::-webkit-scrollbar-track{background:transparent}
+.items::-webkit-scrollbar-thumb{
+  background:var(--ghost);background-clip:content-box;
+  border:3px solid transparent;border-radius:6px;
+}
+.items::-webkit-scrollbar-thumb:hover{background:var(--faint);background-clip:content-box}
+.items li{padding:.1875rem 0}
+.items li+li{border-top:1px solid var(--hair)}
+.items .none{color:var(--faint)}
+
+/* ---------- what to do next ---------- */
+.steps{margin:2rem 0 0;padding-left:1.25rem;font-size:13px;line-height:1.625;color:var(--mute)}
+.steps li+li{margin-top:.375rem}
+.steps b{font-weight:500;color:var(--ink)}
